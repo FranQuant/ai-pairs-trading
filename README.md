@@ -10,12 +10,12 @@ Across 11 years of US-listed LatAm ADRs, an earnings-gate overlay on a Gatev/OU 
 
 ```mermaid
 flowchart TD
-    DATA["EODHD<br/>prices · fundamentals · earnings · news"] --> NB01
-    NB01["NB01 — ADR Universe<br/>~11y point-in-time snapshot"] --> NB02
-    NB02["NB02 — OU Pairs Engine<br/>cointegration → OU spread → 280 trades"] --> NB03
-    NB03["NB03 — AI Conditioning overlay<br/>earnings gate + sentiment gate"] --> NB04
-    NB04["NB04 — Portfolio Ablation<br/>3-variant ladder · K-sweep · coverage strata"]
-    APP["Appendix 02b — risk-norm toolkit"] -.->|promoted into| NB04
+    DATA["EODHD<br/>prices · news · earnings"] --> NB01
+    NB01["NB01 — ADR Universe<br/>~11y point-in-time"] --> NB02
+    NB02["NB02 — OU Pairs Engine<br/>cointegration · OU spread"] --> NB03
+    NB03["NB03 — AI Conditioning<br/>earnings + sentiment gates"] --> NB04
+    NB04["NB04 — Portfolio Ablation<br/>K-sweep · 3 variants"]
+    APP["Appendix 02b<br/>risk-norm toolkit"] -.->|promoted into| NB04
 ```
 
 ## Findings
