@@ -1,0 +1,23 @@
+# secrets
+.env
+.env.*
+*.key
+
+# vendor data — do NOT redistribute
+data/
+semantic_cache_v05/
+artifacts/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# jupyter
+.ipynb_checkpoints/
+
+# os / editor
+.DS_Store
+.claude/
