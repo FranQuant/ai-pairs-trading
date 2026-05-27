@@ -21,3 +21,8 @@ venv/
 # os / editor
 .DS_Store
 .claude/
+
+# local data symlinks (point at the source repo; never commit)
+/data
+/semantic_cache_v05
+/artifacts
