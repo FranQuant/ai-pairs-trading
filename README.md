@@ -1,10 +1,10 @@
 # AI-conditioned OU pairs trading on Latin American ADRs — a proof of concept
 
-A research notebook arc that modernizes a classical pairs-trading strategy in two layers: continuous-time OU spread modeling (Elliott 2005) over Gatev-style distance pairs, and an AI-derived conditioning overlay — earnings calendar + news sentiment — layered on top.
+A research notebook arc that modernizes a classical pairs-trading strategy in two layers: OU mean-reversion diagnostics (Elliott 2005) to select cointegrated pairs, traded with a rolling z-score, and an AI-derived conditioning overlay — earnings calendar + news sentiment — layered on top.
 
 ## TL;DR
 
-Across 11 years of US-listed LatAm ADRs, the OU candidate filter lifts a near-zero cointegration-only baseline (**Sharpe 0.04**) to **0.72**, and an earnings-gate overlay then carries it to **~1.00** at the principled horizon K=33 (robust across K ∈ {7…33}). A sentiment-gate overlay does not survive coverage (most names too news-thin) and signal (on the covered slice, VADER tone slightly *reduced* risk-adjusted return). Drawing that boundary precisely — rather than claiming an edge the data cannot support — is the contribution.
+Across 11 years of US-listed LatAm ADRs, applying OU mean-reversion diagnostics to select pairs (traded with a rolling z-score) lifts a near-zero cointegration-only baseline (**Sharpe 0.04**) to **0.72**; an earnings-gate overlay carries it to **~1.00** at the principled horizon K=33 (robust across K ∈ {7…33}). A sentiment-gate overlay does not survive coverage (most names too news-thin) and signal (on the covered slice, VADER tone slightly *reduced* risk-adjusted return). Drawing that boundary precisely — rather than claiming an edge the data cannot support — is the contribution.
 
 ## Pipeline
 
@@ -12,7 +12,7 @@ Across 11 years of US-listed LatAm ADRs, the OU candidate filter lifts a near-ze
 flowchart TD
     DATA["EODHD<br/>prices · news · earnings"] --> NB01
     NB01["NB01 — ADR Universe<br/>~11y point-in-time"] --> NB02
-    NB02["NB02 — OU Pairs Engine<br/>cointegration · OU spread"] --> NB03
+    NB02["NB02 — Pairs Engine<br/>cointegration · OU-selected"] --> NB03
     NB03["NB03 — AI Conditioning<br/>earnings + sentiment gates"] --> NB04
     NB04["NB04 — Portfolio Ablation<br/>K-sweep · 4 variants"]
     APP["Appendix 02b<br/>risk-norm toolkit"] -.->|promoted into| NB04
@@ -24,7 +24,7 @@ flowchart TD
 
 *Cointegration-only selection (black, dashed) produces no tradable edge; the OU dynamics filter (grey) lifts Sharpe to 0.72; the earnings gate (blue) carries it to ~1.00 with shallower drawdowns; sentiment (orange) sits marginally below.*
 
-**OU filter — what makes the pairs tradable.** Selecting on cointegration strength alone — same correlation prefilter and Engle-Granger screen, but without the OU dynamics filter on half-life, R², and mean-reversion speed — yields essentially no edge in this universe: a portfolio Sharpe of **0.04**, indistinguishable from zero. The OU filter, ranking candidates by mean-reversion half-life, lifts that to **0.72** before any conditioning. Statistical cointegration is necessary but not sufficient; tradability comes from the speed and cleanliness of mean reversion — exactly what the OU layer screens for.
+**OU pair-selection filter — what makes the strategy tradable.** Selecting on cointegration strength alone — same correlation prefilter and Engle-Granger screen, but without the OU diagnostics (half-life, R², mean-reversion speed) — yields essentially no edge: a portfolio Sharpe of **0.04**, indistinguishable from zero. Applying OU mean-reversion diagnostics to select pairs, then trading with a rolling z-score, lifts that to **0.72** before any conditioning. Statistical cointegration is necessary but not sufficient; tradability comes from the speed and cleanliness of mean reversion — exactly what the OU diagnostics screen for.
 
 **Earnings gate — the substance, robust.** Flattening trades held through scheduled reports cuts jump risk on a slice of the book that was close to break-even in return.
 
