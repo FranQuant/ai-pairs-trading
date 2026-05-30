@@ -9,10 +9,12 @@ import datetime
 import hashlib
 import json
 import re
+import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 import requests
 from tqdm import tqdm
@@ -616,3 +618,142 @@ def export_pair_artifacts(
     pair_ts_df.to_parquet(out_dir / f"pair_timeseries{suffix}.parquet")
     trades_df.to_csv(out_dir / f"trades_table{suffix}.csv", index=False)
     print(f"[OK] exported {len(pairs_meta_df)} pairs → {out_dir} (suffix={suffix or '(none)'})")
+
+
+# ---------------------------------------------------------------------------
+# High-level assembly helpers (called by NB02 §7 and §7.3)
+# ---------------------------------------------------------------------------
+
+_PAIR_META_COLUMNS = ["pair", "Ticker1", "Ticker2", "rho", "alpha", "beta",
+                      "phi", "halflife", "r2", "eg_p", "adf_p", "Nobs"]
+
+
+def assemble_pair_artifacts(results, S_pairs, pairs_top_df, oos_index, out_dir, *, suffix=""):
+    """
+    Assemble pair_meta / pair_ts / trades_df from backtest results, persist all
+    three via export_pair_artifacts, and return a diagnostics dict.
+
+    Trade-event extraction rule: a trade opens when position goes from 0 to nonzero
+    (or sign-flips while nonzero), and closes when position returns to 0 (or sign-flips).
+    A sign-flip generates two trade events (close + open). PnL accumulates per-trade
+    from entry through exit (inclusive of exit-day PnL).
+
+    Suffix '' = main OU-selected export (NB2 → NB3); '_coint' = cointegration-only
+    baseline variant.
+
+    Returns a dict with keys: pair_meta, pair_ts, trades_df, extracted_counts, flip_counts.
+    """
+    # 1) Pair metadata
+    pair_meta = pairs_top_df[_PAIR_META_COLUMNS].copy()
+
+    # 2) Long-format pair time series
+    rows = []
+    for r in results:
+        rows.append(pd.DataFrame({
+            "date":     oos_index,
+            "pair":     r.pair,
+            "spread":   S_pairs[r.pair].reindex(oos_index),
+            "zscore":   r.z.reindex(oos_index),
+            "position": r.pos.reindex(oos_index),
+            "pnl":      r.pnl.reindex(oos_index).fillna(0.0),
+        }))
+    pair_ts = (pd.concat(rows, axis=0)
+                 .sort_values(["pair", "date"])
+                 .reset_index(drop=True))
+    expected = len(oos_index) * len(results)
+    assert len(pair_ts) == expected, f"pair_ts shape mismatch: {len(pair_ts)} vs {expected}"
+
+    # 3) Trade events
+    trade_rows = []
+    for r in results:
+        pos, z, pnl = r.pos, r.z, r.pnl
+        active = False; entry_date = entry_z = entry_pos = direction = None
+        trade_pnl = 0.0; prev_p = 0.0
+        for t in pos.index:
+            p = pos.loc[t]
+            opened  = (prev_p == 0) and (p != 0)
+            closed  = (prev_p != 0) and (p == 0)
+            flipped = (prev_p != 0) and (p != 0) and (np.sign(p) != np.sign(prev_p))
+            if active and (closed or flipped):
+                trade_rows.append({
+                    "pair": r.pair, "entry_date": entry_date, "exit_date": t,
+                    "direction": direction, "entry_pos": entry_pos, "entry_z": entry_z,
+                    "exit_z":     z.loc[t] if t in z.index else np.nan,
+                    "n_days":     (t - entry_date).days, "trade_pnl": trade_pnl,
+                })
+                active = False; trade_pnl = 0.0
+            if opened or flipped:
+                active = True; entry_date = t
+                entry_z = z.loc[t] if t in z.index else np.nan
+                entry_pos = float(p)
+                direction = "LONG" if p > 0 else "SHORT"
+                trade_pnl = pnl.loc[t]
+            elif active:
+                trade_pnl += pnl.loc[t]
+            prev_p = p
+        if active:
+            last_t = pos.index[-1]
+            trade_rows.append({
+                "pair": r.pair, "entry_date": entry_date, "exit_date": last_t,
+                "direction": direction, "entry_pos": entry_pos, "entry_z": entry_z,
+                "exit_z":     z.loc[last_t] if last_t in z.index else np.nan,
+                "n_days":     (last_t - entry_date).days, "trade_pnl": trade_pnl,
+            })
+    trades_df = pd.DataFrame(trade_rows)
+
+    # 4) Persist
+    export_pair_artifacts(pair_meta, pair_ts, trades_df, out_dir, suffix=suffix)
+
+    # 5) Diagnostics
+    extracted_counts = trades_df.groupby("pair").size().rename("extracted")
+    flip_counts = {}
+    for r in results:
+        p = r.pos.values
+        flips = ((np.sign(p[1:]) != np.sign(p[:-1])) & (p[1:] != 0) & (p[:-1] != 0)).sum()
+        flip_counts[r.pair] = int(flips)
+    flip_counts = pd.Series(flip_counts, name="flips")
+
+    return {"pair_meta": pair_meta, "pair_ts": pair_ts, "trades_df": trades_df,
+            "extracted_counts": extracted_counts, "flip_counts": flip_counts}
+
+
+def check_trade_counts(diag, bt_summary):
+    """Cross-validate extracted trade events against backtest's trade count.
+    expected_2x_extracted = bt_summary.Trades + flips ; actual = 2 * extracted.
+    Returns a DataFrame; caller inspects .mismatch column."""
+    check = pd.DataFrame({
+        "Trades_bt": bt_summary.set_index("pair")["Trades"],
+        "extracted": diag["extracted_counts"],
+        "flips":     diag["flip_counts"],
+    })
+    check["expected_2x_extracted"] = check["Trades_bt"] + check["flips"]
+    check["actual_2x_extracted"]   = 2 * check["extracted"]
+    check["mismatch"]              = check["expected_2x_extracted"] - check["actual_2x_extracted"]
+    return check
+
+
+def persist_run_metadata(out_dir, *, split_date, n_train, n_test, n_pairs,
+                         config, universe_size, repo_root=None):
+    """Write run_metadata.json (split, config, git_hash, universe size) to out_dir.
+    repo_root: pass ROOT for git_hash via `git rev-parse HEAD`; otherwise 'unknown'.
+    Returns the run_meta dict (also persisted)."""
+    git_hash = "unknown"
+    if repo_root is not None:
+        try:
+            git_hash = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo_root, stderr=subprocess.DEVNULL
+            ).decode().strip()
+        except Exception:
+            pass
+    run_meta = {
+        "split_date":    str(split_date.date() if hasattr(split_date, "date") else split_date),
+        "n_train":       int(n_train),
+        "n_test":        int(n_test),
+        "n_pairs":       int(n_pairs),
+        "config":        config,
+        "git_hash":      git_hash,
+        "universe_size": int(universe_size),
+    }
+    with open(out_dir / "run_metadata.json", "w") as f:
+        json.dump(run_meta, f, indent=2, default=str)
+    return run_meta
