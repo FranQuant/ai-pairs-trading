@@ -8,12 +8,14 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import re
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import requests
+from tqdm import tqdm
 
 from src.config import EODHD_API_KEY, EODHD_BASE_URL, OFFLINE_MODE, PATHS
 
@@ -112,7 +114,13 @@ class EODHDClient:
         url = f"{self.base_url}/{endpoint}"
         r = requests.get(url, params={**params, "api_token": self._token},
                          timeout=self.timeout)
-        r.raise_for_status()
+        if not r.ok:
+            # Redact api_token from URL before raising so the token never appears in tracebacks
+            redacted_url = re.sub(r"api_token=[^&]*", "api_token=<redacted>", r.url)
+            raise requests.HTTPError(
+                f"{r.status_code} {r.reason} for url: {redacted_url}",
+                response=r,
+            )
         payload = r.json()
 
         # Atomic write
@@ -426,3 +434,151 @@ def persist_universe_tier(
 
     _write_manifest(paths.DATA / "manifest.json", paths.ROOT, entries)
     return written
+
+
+# ---------------------------------------------------------------------------
+# Pull orchestrators
+# ---------------------------------------------------------------------------
+
+_EARN_COLS = ["Ticker", "report_date", "period_date", "before_after_market",
+              "currency", "eps_actual", "eps_estimate", "surprise_pct"]
+
+
+def pull_universe_fundamentals(client, tickers, ticker_to_country, *,
+                                snapshot: str, offline: bool, processed_dir):
+    """Pull or replay fundamentals across the active universe.
+
+    OFFLINE_MODE: reads fundamentals_{snapshot}.csv (index_col='Ticker') from processed_dir.
+    Online: loops, calls client.fundamentals(f'{t}.US') + flatten_fundamentals;
+            collects quality flags and error messages by ticker.
+
+    Returns (universe_df indexed by 'Ticker', quality_dict, errors_dict).
+    Preserves the exact lift-and-shift behavior from NB01 §3.2.
+    """
+    if offline:
+        universe = pd.read_csv(processed_dir / f"fundamentals_{snapshot}.csv",
+                               index_col="Ticker")
+        print(f"[OFFLINE] loaded universe from fundamentals_{snapshot}.csv: {universe.shape}")
+        return universe, {}, {}
+
+    rows: list[dict]         = []
+    quality: dict[str, list] = {}
+    errors: dict[str, str]   = {}
+
+    for t in tqdm(tickers, desc="fundamentals"):
+        code_us = f"{t}.US"
+        try:
+            payload = client.fundamentals(code_us)
+        except Exception as e:
+            errors[t] = f"{type(e).__name__}: {e}"
+            continue
+        row, flags = flatten_fundamentals(t, payload, ticker_to_country[t])
+        rows.append(row)
+        if flags:
+            quality[t] = flags
+
+    universe = pd.DataFrame(rows).set_index("Ticker")
+    return universe, quality, errors
+
+
+def pull_eod_panels(client, tickers, *, from_date: str,
+                    snapshot: str, offline: bool, processed_dir):
+    """Pull or replay EOD price/volume/returns panels.
+
+    OFFLINE: reads prices_{snapshot}.parquet / volume_{snapshot}.parquet /
+             returns_{snapshot}.parquet.
+    Online: per ticker → client.eod(f'{t}.US', from_date=...) → typed DataFrame
+            → panel assembly.
+    Panel index.name = "Date" (NB02 reads prices_pairs.csv with index_col="Date").
+    Returns (prices, volume, returns, errors_dict).
+    """
+    if offline:
+        prices  = pd.read_parquet(processed_dir / f"prices_{snapshot}.parquet")
+        volume  = pd.read_parquet(processed_dir / f"volume_{snapshot}.parquet")
+        returns = pd.read_parquet(processed_dir / f"returns_{snapshot}.parquet")
+        print(f"[OFFLINE] loaded panels from data/processed/: prices {prices.shape}")
+        for _panel in (prices, volume, returns):
+            _panel.index.name = "Date"
+        return prices, volume, returns, {}
+
+    px_frames: dict  = {}
+    eod_errors: dict = {}
+
+    for t in tqdm(tickers, desc="eod"):
+        code_us = f"{t}.US"
+        try:
+            bars = client.eod(code_us, from_date=from_date)
+        except Exception as e:
+            eod_errors[t] = f"{type(e).__name__}: {e}"
+            continue
+        if not bars:
+            eod_errors[t] = "empty response"
+            continue
+        df = pd.DataFrame(bars)
+        df["date"] = pd.to_datetime(df["date"])
+        for col in ("open", "high", "low", "close", "adjusted_close", "volume"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        if "adjusted_close" in df.columns and df["adjusted_close"].notna().any():
+            df["price"] = df["adjusted_close"]
+        else:
+            df["price"] = df["close"]
+        px_frames[t] = df.set_index("date").sort_index()
+
+    prices  = pd.DataFrame({t: f["price"]  for t, f in px_frames.items()}).sort_index()
+    volume  = pd.DataFrame({t: f["volume"] for t, f in px_frames.items()}).sort_index()
+    returns = prices.pct_change()
+
+    for _panel in (prices, volume, returns):
+        _panel.index.name = "Date"
+
+    return prices, volume, returns, eod_errors
+
+
+def pull_earnings_calendar(client, tickers, *, from_date: str,
+                            snapshot: str, offline: bool, processed_dir):
+    """Pull or replay the earnings calendar across the active universe.
+
+    OFFLINE: reads earnings_{snapshot}.parquet.
+    Online: per ticker → client.earnings_calendar → normalize → typed long-form
+            DataFrame.
+    Returns (earnings_df, earn_counts_dict, errors_dict).
+    """
+    if offline:
+        earnings    = pd.read_parquet(processed_dir / f"earnings_{snapshot}.parquet")
+        earn_counts = earnings["Ticker"].value_counts().to_dict()
+        print(f"[OFFLINE] loaded earnings from earnings_{snapshot}.parquet: {earnings.shape}")
+        return earnings, earn_counts, {}
+
+    earn_rows: list   = []
+    earn_errors: dict = {}
+    earn_counts: dict = {}
+
+    for t in tqdm(tickers, desc="earnings"):
+        code_us = f"{t}.US"
+        try:
+            payload = client.earnings_calendar(from_date=from_date, symbols=code_us)
+        except Exception as e:
+            earn_errors[t] = f"{type(e).__name__}: {e}"
+            continue
+        events = payload.get("earnings", []) if isinstance(payload, dict) else []
+        earn_counts[t] = len(events)
+        for ev in events:
+            earn_rows.append({
+                "Ticker":              t,
+                "report_date":         ev.get("report_date"),
+                "period_date":         ev.get("date"),
+                "before_after_market": ev.get("before_after_market"),
+                "currency":            ev.get("currency"),
+                "eps_actual":          ev.get("actual"),
+                "eps_estimate":        ev.get("estimate"),
+                "surprise_pct":        ev.get("percent"),
+            })
+
+    earnings = pd.DataFrame(earn_rows, columns=_EARN_COLS)
+    for c in ("report_date", "period_date"):
+        earnings[c] = pd.to_datetime(earnings[c], errors="coerce")
+    for c in ("eps_actual", "eps_estimate", "surprise_pct"):
+        earnings[c] = pd.to_numeric(earnings[c], errors="coerce")
+    earnings = earnings.sort_values(["Ticker", "report_date"]).reset_index(drop=True)
+    return earnings, earn_counts, earn_errors
