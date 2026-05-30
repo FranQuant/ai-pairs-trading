@@ -582,3 +582,37 @@ def pull_earnings_calendar(client, tickers, *, from_date: str,
         earnings[c] = pd.to_numeric(earnings[c], errors="coerce")
     earnings = earnings.sort_values(["Ticker", "report_date"]).reset_index(drop=True)
     return earnings, earn_counts, earn_errors
+
+
+# ---------------------------------------------------------------------------
+# export_pair_artifacts
+# ---------------------------------------------------------------------------
+
+def export_pair_artifacts(
+    pairs_meta_df: pd.DataFrame,
+    pair_ts_df: pd.DataFrame,
+    trades_df: pd.DataFrame,
+    out_dir: Path,
+    suffix: str = "",
+) -> None:
+    """Persist the three NB02→NB03 pair-level artifacts.
+
+    Writes to *out_dir* (created if absent):
+        pairs_metadata{suffix}.csv
+        pair_timeseries{suffix}.parquet
+        trades_table{suffix}.csv
+
+    *suffix* distinguishes parallel exports — NB02 calls this function twice:
+        suffix='_coint'  (§7.3 cointegration-only baseline)
+        suffix=''        (NB03 Export Cell, OU-selected baseline)
+    NB03 reads these files as its frozen upstream inputs.
+
+    *out_dir* is passed in by the caller; NB02 uses
+    ``ROOT / "artifacts" / "nb2_outputs"``.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pairs_meta_df.to_csv(out_dir / f"pairs_metadata{suffix}.csv", index=False)
+    pair_ts_df.to_parquet(out_dir / f"pair_timeseries{suffix}.parquet")
+    trades_df.to_csv(out_dir / f"trades_table{suffix}.csv", index=False)
+    print(f"[OK] exported {len(pairs_meta_df)} pairs → {out_dir} (suffix={suffix or '(none)'})")
