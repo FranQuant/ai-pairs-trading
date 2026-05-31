@@ -152,11 +152,31 @@ class EODHDClient:
         if symbols: params["symbols"] = symbols
         return self._get("calendar/earnings", params, force=force)
 
-    def news(self, code: str, from_date: str, to_date: str | None = None,
-             limit: int = 1000, *, force: bool = False) -> list[dict]:
-        params: dict = {"s": code, "from": from_date, "limit": limit}
-        if to_date: params["to"] = to_date
-        return self._get("news", params, force=force)
+    def news(self, code: str, *, from_date: str, to_date: str,
+             page_size: int = 1000, max_pages: int = 100, force: bool = False) -> list:
+        """Fetch all news articles for `code` between from_date and to_date.
+
+        Auto-paginates via offset; each page is cached individually (so an offline
+        replay after a one-shot online run completes without network).
+
+        Returns a flat list of article dicts. Each article has at minimum a 'date'
+        and a 'sentiment' sub-dict with 'pos' / 'neg' / 'polarity' fields when
+        sentiment scoring is available (EODHD doesn't score every article).
+        """
+        all_articles = []
+        offset = 0
+        for _ in range(max_pages):
+            batch = self._get("news", {
+                "s": code, "from": from_date, "to": to_date,
+                "limit": page_size, "offset": offset,
+            }, force=force)
+            if not batch:
+                break
+            all_articles.extend(batch)
+            if len(batch) < page_size:
+                break  # last page
+            offset += page_size
+        return all_articles
 
 
 # ---------------------------------------------------------------------------
