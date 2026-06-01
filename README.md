@@ -24,22 +24,18 @@ flowchart TD
 
 *Cointegration-only selection (black, dashed) produces no tradable edge; the OU dynamics filter (grey) lifts Sharpe to 0.72; the earnings gate (blue) carries it to ~1.00 with shallower drawdowns; sentiment (orange) sits marginally below.*
 
-**OU pair-selection filter — what makes the strategy tradable.** Selecting on cointegration strength alone — same correlation prefilter and Engle-Granger screen, but without the OU diagnostics (half-life, R², mean-reversion speed) — yields essentially no edge: a portfolio Sharpe of **0.04**, indistinguishable from zero. Applying OU mean-reversion diagnostics to select pairs, then trading with a rolling z-score, lifts that to **0.72** before any conditioning. Statistical cointegration is necessary but not sufficient; tradability comes from the speed and cleanliness of mean reversion — exactly what the OU diagnostics screen for.
+| Variant | Sharpe | Note |
+|---|---:|---|
+| Cointegration-only | 0.04 | indistinguishable from zero |
+| OU-selected | 0.72 | tradability comes from mean-reversion speed/cleanliness, not cointegration alone |
+| OU + earnings gate | ~1.00 | at K=33 (median holding period, fixed pre-hoc); robust across K ∈ {7, 14, 21, 33} |
+| OU + earnings + sentiment | ~0.98 | sentiment fails twice — coverage cliff + on the covered slice, VADER tone slightly *reduced* risk-adjusted return |
 
-**Earnings gate — the substance, robust.** Flattening trades held through scheduled reports cuts jump risk on a slice of the book that was close to break-even in return.
+The sentiment boundary is the contribution: neither this lexicon nor this feed is fit for purpose. A finance-tuned tone model (FinBERT, Loughran-McDonald) on the covered slice, or a quant-grade entity-resolved feed (RavenPack, Refinitiv MarketPsych), would extend the picture.
 
-- **Sharpe lifts from 0.72 to ~1.00** at K=33 (the median holding period, fixed before any of these numbers were seen)
-- Robust across K ∈ {7, 14, 21, 33} — the benefit lives in drawdown, skew, and left-tail severity, not headline return
-- The in-sample peak (~K=21, Sharpe 1.29) was deliberately not chased; the *shape* of the sweep is the result, not the maximum
+**Design note.** We evaluated the Avellaneda & Lee (2010) S-score (frozen IS equilibrium μ, σ_eq) as an alternative trade signal. On these pairs the frozen parameters did not survive multi-year OOS — OOS spread volatility ran ~3× the IS σ_eq and the mean drifted multiple σ_eq from IS μ, saturating the signal. Rolling-z adapts; frozen-S does not. (Consistent with cointegration breakdown — Gatev, Goetzmann & Rouwenhorst 2006.)
 
-**Sentiment gate — bounded twice over, and the boundary is the result.**
-
-- *Coverage*: most names lack enough as-of news for the gate to form a view; it abstains and the portfolio barely moves
-- *Signal*: on the covered slice — where the gate can see — VADER-style tone slightly *reduced* risk-adjusted return rather than improving it
-
-The implication is precise: neither this lexicon nor this feed is fit for purpose here. Two independent levers would extend the picture — a finance-tuned tone model (Loughran-McDonald, FinBERT) on the covered slice, or a quant-grade entity-resolved feed (RavenPack, Refinitiv MarketPsych, Bloomberg) to break the coverage cliff.
-
-**Scope.** Proof of concept. The framework's feasibility is established and the next data investment is identified; deployability is not claimed. Later stages: true capital-scaled allocation (per-pair notional reconstructed from prices), explicit stop-loss, broader and more specialized sentiment sourcing, and shock-window analysis around scheduled events.
+**Scope.** Proof of concept. Framework feasibility established; deployability not claimed.
 
 ## Reproducibility
 
