@@ -1,0 +1,119 @@
+# seed_tickers.yaml
+#
+# Master list of US-listed LatAm ADRs that NB1 v2's puller attempts to fetch.
+# Single source of truth for "what's in the universe pipeline."
+#
+# Loading:
+#   import yaml
+#   data     = yaml.safe_load(open("data/static/seed_tickers.yaml"))
+#   active   = data["active"]      # list[str], passed to puller
+#   excluded = data["excluded"]    # dict[str, str], ticker -> reason
+#
+# To add a ticker: append to `active` (alphabetical within country section).
+# To disqualify a ticker that the vendor mis-resolves or is otherwise
+# unusable: move it to `excluded` with a reason. Do NOT delete entries —
+# the audit trail matters for paper reproducibility.
+#
+# Counts: 78 active + 3 excluded = 81 total
+
+active:
+  # Argentina (19)
+  - AGRO
+  - ARCO
+  - BBAR
+  - BMA
+  - CAAP
+  - CEPU
+  - DESP
+  - EDN
+  - GGAL
+  - GLOB
+  - IRS
+  - MELI
+  - PAM
+  - SUPV
+  - TGS
+  - TS
+  - TX
+  - VIST
+  - YPF
+
+  # Brazil (28)
+  - ABEV
+  - AFYA
+  - BAK
+  - BBD
+  - BRFS
+  - BSBR
+  - CBDBY
+  - CINT
+  - ERJ
+  - EVEX
+  - GGB
+  - INTR
+  - ITUB
+  - LVRO
+  - NU
+  - PAGS
+  - PAX
+  - PBR
+  - SGML
+  - SID
+  - UGP
+  - VALE
+  - VINP
+  - VSTA
+  - VTEX
+  - VTRU
+  - XP
+  - ZENV
+
+  # Chile (4)
+  - BCH
+  - BSAC
+  - CCU
+  - SQM
+
+  # Colombia (5)
+  - AVAL
+  - CIB
+  - EC
+  - GPRK
+  - TGLS
+
+  # Mexico (10)
+  - AMX
+  - ASR
+  - CX
+  - FMX
+  - KOF
+  - OMAB
+  - PAC
+  - TBBB
+  - TV
+  - VLRS
+
+  # Peru (7)
+  - AUNA
+  - BAP
+  - BVN
+  - CPAC
+  - IFS
+  - NEXA
+  - SCCO
+
+  # Panama (3)
+  - BLX
+  - CPA
+  - PSMT
+
+  # Uruguay (1)
+  - DLO
+
+  # Pan-Regional (1)
+  - PAAS
+
+excluded:
+  CEG: "Vendor returned Constellation Energy (US utility), not LatAm equity."
+  STN: "Vendor returned Stantec Inc. (Canadian engineering), not LatAm equity."
+  STIX: "Semantix — delisted Jun 2024 after 99.6% drawdown. Survivorship contaminant."

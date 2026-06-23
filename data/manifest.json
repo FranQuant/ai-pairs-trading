@@ -1,0 +1,85 @@
+{
+  "data/processed/earnings_2025-03-31.parquet": {
+    "column_count": 8,
+    "date_max": "2026-05-27",
+    "date_min": "2015-01-08",
+    "generated_at": "2026-05-31T11:08:55+00:00",
+    "row_count": 3067,
+    "sha256": "e8d5db85823df7e0a95df9057cd7ea3cb8bc634075f8b5eeb6a4b4b424796c8e",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/fundamentals_2025-03-31.csv": {
+    "column_count": 55,
+    "generated_at": "2026-05-31T11:08:55+00:00",
+    "row_count": 78,
+    "sha256": "c9a00cba61030391ca0f52572f69a1b0cc1406bf6707c8af9edd42985fc6b927",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/prices_2025-03-31.parquet": {
+    "column_count": 78,
+    "date_max": "2026-05-29",
+    "date_min": "2015-01-02",
+    "generated_at": "2026-05-31T11:08:55+00:00",
+    "row_count": 2868,
+    "sha256": "574fe72a9b3a1d81c67aec22dd0717062b296974b9da9436342f602616d13321",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/prices_pairs.csv": {
+    "column_count": 71,
+    "generated_at": "2026-05-31T11:08:56+00:00",
+    "row_count": 2868,
+    "sha256": "62cfdd3ef9e1f105f3ee873eff3cfa9a3bec2048dcede18d9de00512c77f22f7",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/returns_2025-03-31.parquet": {
+    "column_count": 78,
+    "date_max": "2026-05-29",
+    "date_min": "2015-01-02",
+    "generated_at": "2026-05-31T11:08:55+00:00",
+    "row_count": 2868,
+    "sha256": "d31c4b73400dd3b601b7770a0d241319d112289a96fbff6b54820b7104dbfdbe",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/returns_pairs.csv": {
+    "column_count": 71,
+    "generated_at": "2026-05-31T11:08:56+00:00",
+    "row_count": 2868,
+    "sha256": "0d58d71e03227662eec4cd09bca629fab8065ef5289ad9da740997f2d7444021",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/tickers_institutional.csv": {
+    "generated_at": "2026-05-31T11:08:56+00:00",
+    "row_count": 45,
+    "sha256": "1dac536cd0d1a60eddbc534378f9f24631e50c682b7ee4c0fdd31019a2e6f112",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/tickers_pairs.csv": {
+    "generated_at": "2026-05-31T11:08:56+00:00",
+    "row_count": 71,
+    "sha256": "48749592264f23f786e80e58ae8a9aba75e29a18db8bbd24ab0fe885d1bca057",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/universe_institutional_fundamentals.csv": {
+    "column_count": 56,
+    "generated_at": "2026-05-31T11:08:56+00:00",
+    "row_count": 45,
+    "sha256": "4e2ba4d4da0aa38796d6a77ef4b5c8e9e20f89616ccbd640966eec69fc48d171",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/universe_pairs_fundamentals.csv": {
+    "column_count": 55,
+    "generated_at": "2026-05-31T11:08:56+00:00",
+    "row_count": 71,
+    "sha256": "e47a61d54b7703264e5ee656aa340d50aa0f0d7aba159888f639318d928e9214",
+    "snapshot_date": "2025-03-31"
+  },
+  "data/processed/volume_2025-03-31.parquet": {
+    "column_count": 78,
+    "date_max": "2026-05-29",
+    "date_min": "2015-01-02",
+    "generated_at": "2026-05-31T11:08:55+00:00",
+    "row_count": 2868,
+    "sha256": "dea46dac611171737d90db989e99aadf8e4c88118173853d00672b55db51d493",
+    "snapshot_date": "2025-03-31"
+  }
+}

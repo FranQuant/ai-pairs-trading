@@ -3,8 +3,26 @@
 .env.*
 *.key
 
-# vendor data — do NOT redistribute
-data/
+# vendor data — ignore contents by default, publish only the minimal runnable set
+data/*
+!data/static/
+!data/processed/
+!data/manifest.json
+
+# inside processed/: publish the NB2 contract + NB1 snapshot, ignore the rest
+data/processed/*
+!data/processed/earnings_2025-03-31.parquet
+!data/processed/fundamentals_2025-03-31.csv
+!data/processed/prices_2025-03-31.parquet
+!data/processed/returns_2025-03-31.parquet
+!data/processed/volume_2025-03-31.parquet
+!data/processed/prices_pairs.csv
+!data/processed/returns_pairs.csv
+!data/processed/tickers_institutional.csv
+!data/processed/tickers_pairs.csv
+!data/processed/universe_institutional_fundamentals.csv
+!data/processed/universe_pairs_fundamentals.csv
+
 semantic_cache_v05/
 artifacts/
 
@@ -22,9 +40,7 @@ venv/
 .DS_Store
 .claude/
 
-# local data symlinks (point at the source repo; never commit)
-/data
+# local symlinks
 /semantic_cache_v05
 /artifacts
-notebooks/img/
 notebooks/img/

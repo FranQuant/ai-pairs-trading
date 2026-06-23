@@ -1,0 +1,139 @@
+# country_of_origin.yaml
+#
+# Country of PRIMARY OPERATIONS for each ticker. Used in NB1 for
+# country-conditioned filters and composition reporting.
+#
+# Important — this is NOT:
+#   - country of listing (always USA — ADRs trade on NYSE/NASDAQ)
+#   - country of incorporation (often a tax-favorable jurisdiction)
+#   - vendor's General.AddressData.Country (which is HQ, not operations)
+#
+# NB1 v2 prints a categorised cross-check at the top of each run showing
+# where this manual map disagrees with EODHD's HQ field. Disagreements
+# are categorised as:
+#   tax-haven      — HQ in LUX/KY/VG/BMU/etc. Common ADR structure;
+#                    informational only, no WARN.
+#   non-LatAm      — HQ in US/CA/etc. Common for resource extractors
+#                    and US-incorporated multinationals; informational only.
+#   regional-shift — HQ in LatAm but != CountryOfOrigin. WARN fires
+#                    unless the ticker appears in the PRE_FLAGGED set
+#                    in NB1 v2 cell 15.
+#
+# Judgment calls — known regional-shift disagreements (these must be
+# kept in sync with PRE_FLAGGED in NB1 v2 cell 15):
+#   ARCO:  Vendor says Uruguay (Montevideo holdco); we keep Argentina —
+#          Buenos Aires operational center for the LatAm McDonald's
+#          franchise, though Brazil is the largest single-country
+#          revenue base. Revise to Pan-Regional or Brazil if you prefer
+#          revenue-weighted attribution.
+#   MELI:  Vendor says Uruguay (Montevideo HQ); we say Argentina —
+#          founding country, historical operational home, large
+#          Argentine revenue base alongside Brazil and Mexico.
+#   PAAS:  Vendor says Canada (Vancouver HQ); we say Pan-Regional —
+#          mining ops distributed across MX/PE/AR/BO with no dominant
+#          country (categorised as non-LatAm by the cross-check, not as
+#          a regional shift).
+#   VIST:  Vendor says Mexico (incorporation domicile); we say Argentina —
+#          core E&P operations are in Vaca Muerta (Argentine shale),
+#          with no meaningful Mexican production base.
+#
+# Loading:
+#   import yaml
+#   groups = yaml.safe_load(open("data/static/country_of_origin.yaml"))
+#   ticker_to_country = {t: c for c, ts in groups.items() for t in ts}
+
+Argentina:
+  - AGRO
+  - ARCO
+  - BBAR
+  - BMA
+  - CAAP
+  - CEPU
+  - DESP
+  - EDN
+  - GGAL
+  - GLOB
+  - IRS
+  - MELI
+  - PAM
+  - SUPV
+  - TGS
+  - TS
+  - TX
+  - VIST
+  - YPF
+
+Brazil:
+  - ABEV
+  - AFYA
+  - BAK
+  - BBD
+  - BRFS
+  - BSBR
+  - CBDBY
+  - CINT
+  - ERJ
+  - EVEX
+  - GGB
+  - INTR
+  - ITUB
+  - LVRO
+  - NU
+  - PAGS
+  - PAX
+  - PBR
+  - SGML
+  - SID
+  - UGP
+  - VALE
+  - VINP
+  - VSTA
+  - VTEX
+  - VTRU
+  - XP
+  - ZENV
+
+Chile:
+  - BCH
+  - BSAC
+  - CCU
+  - SQM
+
+Colombia:
+  - AVAL
+  - CIB
+  - EC
+  - GPRK
+  - TGLS
+
+Mexico:
+  - AMX
+  - ASR
+  - CX
+  - FMX
+  - KOF
+  - OMAB
+  - PAC
+  - TBBB
+  - TV
+  - VLRS
+
+Peru:
+  - AUNA
+  - BAP
+  - BVN
+  - CPAC
+  - IFS
+  - NEXA
+  - SCCO
+
+Panama:
+  - BLX
+  - CPA
+  - PSMT
+
+Uruguay:
+  - DLO
+
+Pan-Regional:
+  - PAAS
