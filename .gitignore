@@ -44,3 +44,9 @@ venv/
 /semantic_cache_v05
 /artifacts
 notebooks/img/
+
+# publish NB2/NB3 artifacts so NB3 & NB4 run offline on Colab
+artifacts/*
+!artifacts/nb2_outputs/
+!artifacts/nb3_outputs/
+artifacts/nb3_outputs/_api_cache/

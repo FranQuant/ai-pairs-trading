@@ -41,5 +41,5 @@ for _p in (PATHS.RAW, PATHS.PROCESSED, PATHS.STATIC, PATHS.CACHE, PATHS.IMG):
 load_dotenv(ROOT / ".env", override=True)
 
 EODHD_API_KEY: str  = os.getenv("EODHD_API_KEY", "")
-OFFLINE_MODE: bool  = os.getenv("OFFLINE_MODE", "0") == "1"
+OFFLINE_MODE: bool  = os.getenv("OFFLINE_MODE", "0") == "1" or not EODHD_API_KEY
 EODHD_BASE_URL: str = "https://eodhd.com/api"

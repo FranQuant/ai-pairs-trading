@@ -1,0 +1,44 @@
+{
+  "timestamp_utc": "2026-05-31T11:09:10.143817+00:00",
+  "offline_mode": true,
+  "policy": "earnings=BLOCK, sentiment=DOWNSIZE",
+  "params": {
+    "L_DAYS": 7,
+    "MIN_COVERAGE_COUNT": 3,
+    "BASELINE_DAYS": 180,
+    "MIN_BASELINE_COUNT": 20,
+    "TONE_LOW_PCTL": 10,
+    "TONE_HIGH_PCTL": 90,
+    "EARNINGS_LOOKAHEAD_DAYS": 33,
+    "DOWNSIZE_MULT": 0.5
+  },
+  "inputs": {
+    "pairs_metadata": "/Users/frasagui/Projects/ai-pairs-trading/artifacts/nb2_outputs/pairs_metadata.csv",
+    "trades_table": "/Users/frasagui/Projects/ai-pairs-trading/artifacts/nb2_outputs/trades_table.csv",
+    "pair_timeseries": "/Users/frasagui/Projects/ai-pairs-trading/artifacts/nb2_outputs/pair_timeseries.parquet"
+  },
+  "outputs": [
+    "semantic_evidence.parquet",
+    "trades_conditioned.csv",
+    "shock_analytics.csv",
+    "news_long.parquet",
+    "earnings_raw.parquet"
+  ],
+  "counts": {
+    "trades": 283,
+    "trade_legs": 566,
+    "unique_tickers": 20
+  },
+  "action_counts": {
+    "BLOCK": 144,
+    "ALLOW": 134,
+    "DOWNSIZE": 5
+  },
+  "coverage_pct_by_L": {
+    "7": 43.6,
+    "14": 59.7,
+    "21": 69.8
+  },
+  "baseline_pnl": 397.53009121490294,
+  "conditioned_pnl": 294.4778795635325
+}

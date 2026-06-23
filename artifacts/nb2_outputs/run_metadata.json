@@ -1,0 +1,23 @@
+{
+  "split_date": "2022-12-21",
+  "n_train": 2007,
+  "n_test": 861,
+  "n_pairs": 20,
+  "config": {
+    "SPLIT_FRAC": 0.7,
+    "LOOKBACK": 756,
+    "CORR_TH": 0.35,
+    "MIN_OBS": 252,
+    "MIN_HL": 5,
+    "MAX_HL": 60,
+    "MIN_R2": 0.05,
+    "TOP_N": 20,
+    "ROLL_WIN": 63,
+    "Z_ENTRY": 2.0,
+    "Z_EXIT": 0.5,
+    "TC_BPS": 5,
+    "ANNUAL_D": 252
+  },
+  "git_hash": "ecd67731e18775e43b01d940683ba448a0e12eb0",
+  "universe_size": 71
+}
