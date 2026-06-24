@@ -10,9 +10,16 @@ Over ~11 years of US-listed LatAm ADRs, OU pair-selection lifts a near-zero coin
 
 ## Run it
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranQuant/ai-pairs-trading/blob/main/notebooks/01_adr_universe.ipynb)
+Open any notebook in Colab → **Run all**. `OFFLINE_MODE` auto-enables with no key; a committed snapshot under `data/`/`artifacts/` replays the pipeline. Start at NB01:
 
-Open any notebook's Colab badge → **Run all**. `OFFLINE_MODE` auto-enables with no key; a committed snapshot under `data/`/`artifacts/` replays the pipeline. Locally:
+| Notebook | Open |
+|---|---|
+| NB01 — ADR Universe | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranQuant/ai-pairs-trading/blob/main/notebooks/01_adr_universe.ipynb) |
+| NB02 — Pairs Engine | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranQuant/ai-pairs-trading/blob/main/notebooks/02_pairs_engine.ipynb) |
+| NB03 — AI Conditioning | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranQuant/ai-pairs-trading/blob/main/notebooks/03_ai_conditioned_pairs.ipynb) |
+| NB04 — Portfolio Ablation | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranQuant/ai-pairs-trading/blob/main/notebooks/04_conditioned_portfolio.ipynb) |
+
+Locally:
 
 ```bash
 git clone https://github.com/FranQuant/ai-pairs-trading.git && cd ai-pairs-trading
@@ -60,7 +67,3 @@ docs/        ablation_equity.png
 ```
 
 Gitignored: raw EODHD cache (`data/cache/`, `data/raw/`), `.venv/`, `.env`, `notebooks/img/`. The committed snapshot is the derived runnable artifact; raw vendor payloads are not redistributed.
-
-## References
-
-Avellaneda & Lee (2010), *Quant. Finance* 10(7) · Do & Faff (2010), *FAJ* 66(4) · Elliott, van der Hoek & Malcolm (2005), *Quant. Finance* 5(3) · Gatev, Goetzmann & Rouwenhorst (2006), *RFS* 19(3) · Hutto & Gilbert (2014), *AAAI ICWSM* 8(1) · Loughran & McDonald (2011), *J. Finance* 66(1)
