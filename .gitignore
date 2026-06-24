@@ -50,3 +50,7 @@ artifacts/*
 !artifacts/nb2_outputs/
 !artifacts/nb3_outputs/
 artifacts/nb3_outputs/_api_cache/
+
+# dead NB3 artifacts — not read or written by current pipeline
+artifacts/nb3_outputs/adjusted_pair_timeseries.parquet
+artifacts/nb3_outputs/trades_ai_semantic.parquet
