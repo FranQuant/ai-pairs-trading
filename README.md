@@ -1,100 +1,173 @@
-# AI-conditioned OU pairs trading on Latin American ADRs — a proof of concept
+# Governed Agentic Reproduction Workflow
 
-A research notebook arc that modernizes a classical pairs-trading strategy in two layers: OU mean-reversion diagnostics (Elliott 2005) to select cointegrated pairs, traded with a rolling z-score, and an AI-derived conditioning overlay — earnings calendar + news sentiment — layered on top.
+A bounded multi-agent workflow that **reproduces** a known quantitative research
+result under **structural governance**. Six single-purpose agents drive a
+deterministic research pipeline through whitelisted tools; a seventh reviews the
+result. No agent makes portfolio decisions, and no agent *can* place a trade —
+the capability does not exist in any agent's toolset.
 
-## TL;DR
+This is the **Level 2** ("research replication") system in the three-level
+agentic taxonomy:
 
-Across 11 years of US-listed LatAm ADRs, applying OU mean-reversion diagnostics to select pairs (traded with a rolling z-score) lifts a near-zero cointegration-only baseline (**Sharpe ≈ 0**) to **0.81**; an earnings-gate overlay carries it to **~1.05** at the principled horizon K=33 (robust across K ∈ {7…33}). A sentiment-gate overlay does not survive coverage (most names too news-thin) and signal (on the covered slice, the vendor sentiment tone slightly *reduced* risk-adjusted return). Drawing that boundary precisely — rather than claiming an edge the data cannot support — is the contribution.
+| Level | Name | What agents do | Status |
+| --- | --- | --- | --- |
+| 1 | Reporting | Describe a result a pipeline already produced | superseded |
+| **2** | **Reproduction** | **Orchestrate the pipeline to produce the result, verify fidelity** | **this module** |
+| 3 | Discovery | Propose new features / models / strategies | out of scope |
 
-## Pipeline
+The thesis it demonstrates: *a governed multi-agent system can reproduce a
+human-built quantitative research pipeline to within a stated tolerance, with
+every stage bounded, audited, and reproducible.* It is **not** "agents beat
+humans" or "agents decide allocations" — neither is claimed or supported.
 
-```mermaid
-flowchart TD
-    DATA["EODHD<br/>prices · news · earnings"] --> NB01
-    NB01["NB01 — ADR Universe<br/>~11y point-in-time"] --> NB02
-    NB02["NB02 — Pairs Engine<br/>cointegration · OU-selected"] --> NB03
-    NB03["NB03 — AI Conditioning<br/>earnings + sentiment gates"] --> NB04
-    NB04["NB04 — Portfolio Ablation<br/>K-sweep · 4 variants"]
-    APP["Appendix 02b<br/>risk-norm toolkit"] -.->|promoted into| NB04
+---
+
+## What it reproduces
+
+The Notebook 03 ML-ensemble strategy: `MSR(Ensemble_mu_hat)` — Lasso, Random
+Forest, and XGBoost expected-return forecasters, equal-weight ensembled, wrapped
+in a long-only maximum-Sharpe optimizer, backtested out-of-sample.
+
+- **Golden OOS Sharpe:** 2.579 (2023-01-01 → 2026, 29-asset universe)
+- **Reproduced:** 2.5795 (absolute deviation 0.0005, within tolerance)
+- The decomposed agent pipeline reproduces the monolithic engine **bit-for-bit**.
+
+---
+
+## Architecture
+
+```
+                         ┌─────────────────────────────────────────┐
+                         │  Orchestrator (deterministic sequencing)  │
+                         └─────────────────────────────────────────┘
+                                          │
+   Data ──▶ Feature ──▶ Model ──▶ Portfolio ──▶ Backtest ──▶ Risk ──▶ Review
+  (load)  (features)  (Lasso/RF  (long-only    (lagged      (metrics) (governed
+          + target)   /XGB →      MSR weights)  OOS returns)           memo)
+                      ensemble)
+     │         │          │            │             │           │        │
+     └─────────┴──────────┴── each stage persists an auditable artifact ──┘
+                              │
+                    Fidelity check (vs golden) ──▶ Governance gate ──▶ Human review
 ```
 
-## Findings
+**Six pipeline agents + one review agent**, each owning exactly one whitelisted
+tool that wraps one deterministic engine function:
 
-![Four-variant ablation — cumulative risk-normalized PnL](docs/ablation_equity.png)
+| Agent | Tool | Wraps | Writes |
+| --- | --- | --- | --- |
+| Data | `tool_load_data` | cache validation | — |
+| Feature | `tool_compute_features` | feature panel + 21d target | `features.parquet`, `target.parquet` |
+| Model | `tool_fit_predict` | fit Lasso/RF/XGB → ensemble | `predictions.parquet` |
+| Portfolio | `tool_build_weights` | long-only MSR | `weights.parquet` |
+| Backtest | `tool_backtest` | lagged-weight OOS returns | `strategy_returns.parquet` |
+| Risk | `tool_evaluate` | metrics + diagnostics | `metrics.json`, `run_manifest.json`, `report.md` |
+| Review | `tool_load_metrics_summary` | bounded read-only summary | `review_<reviewer>.md` |
 
-*Cointegration-only selection (black, dashed) produces no tradable edge; the OU dynamics filter (grey) lifts Sharpe to 0.81; the earnings gate (blue) carries it to ~1.05 with shallower drawdowns; sentiment (orange) sits marginally below.*
+### Governance is structural, not prompt-based
 
-| Variant | Sharpe | Note |
-|---|---:|---|
-| Cointegration-only | ≈ 0 | indistinguishable from zero |
-| OU-selected | 0.81 | tradability comes from mean-reversion speed/cleanliness, not cointegration alone |
-| OU + earnings gate | ~1.05 | at K=33 (the median holding period, used as a principled default); robust across K ∈ {7, 14, 21, 33} |
-| OU + earnings + sentiment | ~1.00 | sentiment fails twice — coverage cliff + on the covered slice, vendor sentiment tone slightly *reduced* risk-adjusted return |
+An agent's power equals its tool whitelist, enforced in code: calling a tool
+outside the whitelist raises `PermissionError`. There is no trade tool, no
+network-fetch tool, and no hyperparameter-mutation tool anywhere in the system —
+so no agent can do those things, regardless of what any prompt says. This is a
+stronger guarantee than asking an LLM to behave.
 
-The sentiment boundary is the contribution: neither this signal nor this feed is fit for purpose here. Two independent levers would extend the picture — a finance-tuned tone model (FinBERT, Loughran-McDonald) replacing the vendor polarity scores on the covered slice, or a quant-grade entity-resolved feed (RavenPack, Refinitiv MarketPsych) breaking the coverage cliff.
+The agents do **not** reason about the pipeline: each pipeline stage is a Python
+function call, fully deterministic. The **only** generative step is the Review
+agent, which receives a bounded numeric summary (never raw data) and writes prose
+— and it cannot alter any number, because it has no tool that mutates anything.
 
-**Design note.** We evaluated transplanting the Avellaneda & Lee (2010) S-score standardization — deviation in units of equilibrium volatility from a fitted equilibrium mean — onto the fixed-coefficient cointegration spread used here, rather than A&L's original construction of cumulative residuals from a rolling factor model. On these pairs the in-sample (μ, σ_eq) did not survive multi-year OOS: OOS spread volatility ran ~3× the IS σ_eq and the mean drifted multiple σ_eq from IS μ, saturating the signal. The fixed-coefficient transplant does not work here; the rolling z-score adapts by construction. Consistent with cointegration breakdown documented in Gatev, Goetzmann & Rouwenhorst (2006).
+---
 
-**Scope.** Proof of concept. Framework feasibility established; deployability not claimed.
+## The reviewer seam (cross-provider comparison)
 
-### Limitations
+The only swappable component is the Review agent, selectable at run time:
 
-- **Survivorship / point-in-time.** The ADR universe is built from a 2025-03-31 EODHD snapshot; the OOS window begins 2022-12-21. Universe membership reflects names still listed at snapshot date — delisted ADRs across the OOS window are not in the candidate set. Earnings dates and news timestamps depend on EODHD's vendor records and are not independently audited for revision history.
-- **Costs.** Transaction costs of 5 bps applied to gross leg notional at every position change. Short-leg borrow, slippage beyond 5 bps, ADR-specific liquidity friction, and FX/conversion costs are not modeled. A capital-scaled allocation with realistic frictions would compress the reported Sharpes; quantifying the breakeven is identified next-step work.
-- **Sentiment source.** The sentiment overlay consumes EODHD's vendor sentiment scores (polarity / pos / neg fields), not a custom model. Earlier drafts referenced VADER; that wording has been corrected.
-- **Statistical inference.** Reported Sharpes are point estimates over a single OOS window. Block-bootstrap confidence intervals, Diebold-Mariano tests of equal predictive accuracy, and multiple-testing correction across K and threshold choices are not included. Lifts are described directionally; formal significance is not claimed.
+| `--reviewer` | Cost | Output |
+| --- | --- | --- |
+| `none` | zero tokens | deterministic template memo (control) |
+| `anthropic` | Opus | LLM-narrated governed memo |
+| `openai` | GPT | LLM-narrated governed memo |
 
-## Reproducibility
+All three receive *identical* bounded evidence and produce a governed memo that
+must pass the same governance gate. Comparing the `anthropic` and `openai` memos
+shows how two model families narrate identical evidence under identical
+constraints — mirroring the project's BL-views experiment.
 
-The repo ships notebook code and narrative only — no rendered outputs, no vendor data. A fresh clone reads as code + prose; charts and tables materialize once you run it. Data isn't redistributed (EODHD terms of service), so reproducing the results requires your own EODHD API key.
+---
+
+## Usage
 
 ```bash
-# 1. Clone and enter
-git clone https://github.com/<user>/ai-pairs-trading.git
-cd ai-pairs-trading
+# zero-token deterministic control
+python scripts/run_agentic_reproduction.py --reviewer none
 
-# 2. Python env (3.11+ recommended)
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# LLM reviewers (need ANTHROPIC_API_KEY / OPENAI_API_KEY in .env)
+python scripts/run_agentic_reproduction.py --reviewer anthropic
+python scripts/run_agentic_reproduction.py --reviewer openai
 
-# 3. EODHD key
-echo "EODHD_API_KEY=your_key_here" > .env
+# offline LLM validation (canned memo, no network)
+python scripts/run_agentic_reproduction.py --reviewer anthropic --mock
 
-# 4. Build the data snapshot (first run only)
-jupyter lab notebooks/01_adr_universe.ipynb   # run all cells; populates ./data/processed/
-
-# 5. Run the pipeline: NB02 → NB03 → NB04, in order
+# plain log output (CI / piped / non-TTY)
+python scripts/run_agentic_reproduction.py --reviewer none --plain
 ```
 
-Subsequent runs of NB01 replay from the local `data/processed/` snapshot (set `OFFLINE_MODE=1` in `.env`); the EODHD key is only needed to *build* the snapshot, not to re-run downstream notebooks.
+The default run renders a **live terminal display**: each agent panel shows its
+tool, action, and a bounded stat as it works, followed by the fidelity verdict
+and the governed memo rendered in the terminal — the deliverable on screen.
 
-## Repo layout
+### Outputs (per reviewer, under `results/agentic_reproduction/<reviewer>/`)
 
+- `review_<reviewer>.md` — the governed review memo (the deliverable)
+- `fidelity_<reviewer>.json` — reproduced vs golden Sharpe, deviation, verdict
+- `run_log_<reviewer>.json` — per-agent tool-call audit trail
+- `metrics.json`, `run_manifest.json`, `report.md`, and final parquets
+- `stages/` — per-stage intermediate artifacts (regenerable; git-ignored)
+
+---
+
+## Why frozen cached data (a design choice, not a limitation)
+
+The Data agent validates and loads a **pinned local cache**; it does not fetch
+live data. This is deliberate and required: bit-for-bit reproduction of a known
+result is only possible against fixed inputs. Live data changes every call, which
+would make the fidelity check meaningless and introduce a network capability that
+weakens the governance guarantee.
+
+**Live-data "fresh run" mode is a documented future direction**, not a gap. The
+decomposition makes it a clean extension: add a `tool_fetch_eodhd(...)` that pulls
+from the data provider, **freezes the result to a timestamped snapshot**, and
+returns the same `DataHandle` the rest of the pipeline already consumes. The six
+downstream stages need no changes. A `--mode {reproduce, fresh}` switch would keep
+the golden-fidelity check for reproduction and skip it for fresh runs (reporting
+the new metrics instead). This belongs in its own branch with its own governance
+review of the network capability.
+
+---
+
+## Tests
+
+```bash
+PYTHONPATH=src pytest tests/research_agents/test_agentic_reproduction.py -v
 ```
-ai-pairs-trading/
-├── notebooks/
-│   ├── 01_adr_universe.ipynb               # point-in-time universe & data snapshot
-│   ├── 02_pairs_engine.ipynb               # cointegration → OU spread → trades
-│   ├── 03_ai_conditioned_pairs.ipynb       # earnings gate + sentiment overlay
-│   ├── 04_conditioned_portfolio.ipynb      # 4-variant ablation, coverage strata, K-sweep
-│   └── appendix/
-│       └── 02b_ou_portfolio_appendix.ipynb # risk-normalization toolkit (promoted into NB04)
-├── docs/
-│   └── ablation_equity.png                 # 4-variant cumulative-PnL figure (README)
-├── requirements.txt
-├── .gitignore
-└── README.md
+
+15 tests cover: each agent's single-tool whitelist; that no agent has a
+trade/fetch/mutate tool; that calling outside a whitelist raises; per-stage
+artifact persistence; the artifact contract; fidelity within tolerance; the
+governance-phrase gate; the LLM reviewer seam; the streaming entry point; and an
+opt-in live reproduction against the real 29-asset caches.
+
+---
+
+## Design notes
+
+- **Deterministic core, observable execution.** `run_workflow` returns a result;
+  `stream_workflow` yields per-stage events for the live display. Both drain one
+  shared `_iter_workflow` generator, so they cannot drift.
+- **Handles carry paths, not frames.** Each stage persists its output and passes
+  a typed path-handle forward; agents never hold raw data in memory between
+  stages, and the review agent only ever sees bounded summaries.
+- **Framework-free.** No agent framework dependency; the "agent" is a bounded
+  role object with a tool whitelist. Orchestration is deterministic Python.
 ```
-
-Local-only (gitignored): `data/`, `artifacts/`, `semantic_cache_v05/` — vendor data and intermediate parquets — plus `.venv/`, `.env`, and `notebooks/img/` (matplotlib figures regenerated on every NB01 run).
-
-## References
-
-- Araci, D. (2019). "FinBERT: Financial Sentiment Analysis with Pre-trained Language Models." *arXiv preprint* arXiv:1908.10063.
-- Do, B., & Faff, R. (2010). "Does Simple Pairs Trading Still Work?" *Financial Analysts Journal*, 66(4), 83–95.
-- Elliott, R. J., van der Hoek, J., & Malcolm, W. P. (2005). "Pairs Trading." *Quantitative Finance*, 5(3), 271–276.
-- Gatev, E., Goetzmann, W. N., & Rouwenhorst, K. G. (2006). "Pairs Trading: Performance of a Relative-Value Arbitrage Rule." *Review of Financial Studies*, 19(3), 797–827.
-- Hilpisch, Y. (forthcoming). "Python for Finance: Python Fluency in the Era of GenAI", (3rd ed.). O'Reilly Media.
-- Hutto, C. J., & Gilbert, E. (2014). "VADER: A Parsimonious Rule-Based Model for Sentiment Analysis of Social Media Text." *Proceedings of the International AAAI Conference on Web and Social Media*, 8(1), 216–225.
-- Loughran, T., & McDonald, B. (2011). "When Is a Liability Not a Liability? Textual Analysis, Dictionaries, and 10-Ks." *Journal of Finance*, 66(1), 35–65.
