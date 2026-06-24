@@ -65,5 +65,3 @@ data/        committed snapshot (processed panels + static config)
 artifacts/   committed NB02/NB03 outputs
 docs/        ablation_equity.png
 ```
-
-Gitignored: raw EODHD cache (`data/cache/`, `data/raw/`), `.venv/`, `.env`, `notebooks/img/`. The committed snapshot is the derived runnable artifact; raw vendor payloads are not redistributed.
